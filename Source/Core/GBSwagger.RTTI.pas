@@ -203,10 +203,37 @@ end;
 { TGBSwaggerRTTIPropertyHelper }
 
 function TGBSwaggerRTTIPropertyHelper.ArrayType: string;
+var
+  LElementType: TRttiType;
+  LTypeName: string;
 begin
   Result := EmptyStr;
-  if (IsArray) then
-    Result := TRttiDynamicArrayType(Self.PropertyType).ElementType.Name;
+  if not IsArray then
+    Exit;
+  if Self.PropertyType.TypeKind <> tkDynArray then
+    Exit;
+  LElementType := TRttiDynamicArrayType(Self.PropertyType).ElementType;
+  if LElementType = nil then
+    Exit('string');
+  LTypeName := LElementType.Name.ToLower;
+  if (LElementType.TypeKind in [tkChar, tkString, tkWChar, tkLString, tkWString, tkUString]) or
+     (LTypeName = 'string') or (LTypeName = 'unicodestring') or (LTypeName = 'ansistring') or
+     (LTypeName = 'widestring') or (LTypeName = 'shortstring') then
+    Result := 'string'
+  else if (LElementType.TypeKind in [tkInteger, tkInt64]) or
+          (Pos('integer', LTypeName) > 0) or (LTypeName = 'int64') or (LTypeName = 'longint') or
+          (LTypeName = 'nativeint') then
+    Result := 'integer'
+  else if (LElementType.TypeKind = tkFloat) or (Pos('double', LTypeName) > 0) or
+          (Pos('single', LTypeName) > 0) or (Pos('extended', LTypeName) > 0) or
+          (LTypeName = 'currency') then
+    Result := 'number'
+  else if (LElementType.TypeKind = tkEnumeration) and (LElementType.Handle = TypeInfo(Boolean)) then
+    Result := 'boolean'
+  else if LTypeName = 'boolean' then
+    Result := 'boolean'
+  else
+    Result := LElementType.Name;
 end;
 
 function TGBSwaggerRTTIPropertyHelper.GetAttribute<T>: T;
